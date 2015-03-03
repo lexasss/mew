@@ -1,0 +1,82 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>My Evolutionary World</title>
+
+    <link rel="stylesheet" type="text/css" href="styles.css">
+    <script type="text/javascript" src="main.js"></script>
+</head>
+<body>
+    <canvas id="fieldView"></canvas>
+
+    <div id="clock">00 : 00 : 00</div>
+
+    <div id="statistics">
+        <div class="hook"></div>
+        <div class="chapter">
+            <h1 class="active">Count</h1>
+            <div class="content">
+                <div class="names"></div>
+                <div class="values"></div>
+            </div>
+        </div>
+        <div class="chapter">
+            <h1>Genes</h1>
+            <div class="content rolled">
+                <div class="names"></div>
+                <div class="values"></div>
+            </div>
+        </div>
+        <div class="chapter">
+            <h1>Performance</h1>
+            <div class="content rolled">
+                <div class="names"></div>
+                <div class="values"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="options">
+        <form action="" class="central">
+            <div class="title">Options</div>
+            <div class="tabs">
+                <div class="list"></div>
+                <div class="pages"></div>
+            </div>
+            <div class="buttons"></div>
+        </form>
+    </div>
+
+    <div id="message" class="hidden">
+        <div class="central">
+            <div class="text"></div>
+            <div class="buttons"></div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+
+        MEW.TerrainGenerator = MEW.TerrainGeneratorDS;
+
+        MEW.Options.show();
+
+        MEW.Options.on( 'hide', function ( aNewOptons )  {
+//var startTime = (new Date()).getTime();
+            var world = new MEW.World();
+//console.log( 'World created in ', (new Date()).getTime() - startTime, ' ms' );
+
+            var view = new MEW.FieldView( world );
+            var stats = new MEW.Statistics( world, view );
+            var clock = new MEW.Clock();
+
+            MEW.Message.on( 'show', clock.stop.bind( clock ) );
+            MEW.Message.on( 'hide', clock.resume.bind( clock ) );
+            
+            stats.init();
+            view.create();
+            world.start();
+            clock.start();
+        });
+    </script>
+</body>
+</html>
