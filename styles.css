@@ -2,10 +2,10 @@
   font-family: 'Fjalla One';
   font-style: normal;
   font-weight: normal;
-  src: local('Fjalla One'), url('../fonts/FjallaOne-Regular.woff') format('woff');
+  src: local('Fjalla One'), url('fonts/FjallaOne-Regular.woff') format('woff');
 }
 #clock {
-  background-image: url("../images/clock.png");
+  background-image: url("images/clock.png");
   background-position: left center;
   background-repeat: no-repeat;
   color: #a5c6b4;
@@ -41,13 +41,13 @@ canvas {
   font-family: 'Roboto Condensed Regular';
   font-style: normal;
   font-weight: normal;
-  src: local('Roboto Condensed Regular'), url('../fonts/RobotoCondensed-Regular.woff') format('woff');
+  src: local('Roboto Condensed Regular'), url('fonts/RobotoCondensed-Regular.woff') format('woff');
 }
 @font-face {
   font-family: 'Allianz Sans Light';
   font-style: normal;
   font-weight: normal;
-  src: local('Allianz Sans Light'), url('../fonts/AllianzSans-Light.woff') format('woff');
+  src: local('Allianz Sans Light'), url('fonts/AllianzSans-Light.woff') format('woff');
 }
 #message {
   background-color: #808080;
@@ -126,25 +126,25 @@ canvas {
   font-family: 'Roboto Condensed Regular';
   font-style: normal;
   font-weight: normal;
-  src: local('Roboto Condensed Regular'), url('../fonts/RobotoCondensed-Regular.woff') format('woff');
+  src: local('Roboto Condensed Regular'), url('fonts/RobotoCondensed-Regular.woff') format('woff');
 }
 @font-face {
   font-family: 'Roboto Condensed Bold';
   font-style: normal;
   font-weight: normal;
-  src: local('Roboto Condensed Bold'), url('../fonts/RobotoCondensed-Bold.woff') format('woff');
+  src: local('Roboto Condensed Bold'), url('fonts/RobotoCondensed-Bold.woff') format('woff');
 }
 @font-face {
   font-family: 'Allianz Sans Light';
   font-style: normal;
   font-weight: normal;
-  src: local('Allianz Sans Light'), url('../fonts/AllianzSans-Light.woff') format('woff');
+  src: local('Allianz Sans Light'), url('fonts/AllianzSans-Light.woff') format('woff');
 }
 @font-face {
   font-family: 'DejaVu Sans Mono';
   font-style: normal;
   font-weight: normal;
-  src: local('DejaVu Sans Mono'), url('../fonts/DejaVuSansMono.woff') format('woff');
+  src: local('DejaVu Sans Mono'), url('fonts/DejaVuSansMono.woff') format('woff');
 }
 #options {
   background-color: #808080;
@@ -406,13 +406,13 @@ canvas {
   font-family: 'Roboto Condensed Regular';
   font-style: normal;
   font-weight: normal;
-  src: local('Roboto Condensed Regular'), url('../fonts/RobotoCondensed-Regular.woff') format('woff');
+  src: local('Roboto Condensed Regular'), url('fonts/RobotoCondensed-Regular.woff') format('woff');
 }
 @font-face {
   font-family: 'DejaVu Sans Mono';
   font-style: normal;
   font-weight: normal;
-  src: local('DejaVu Sans Mono'), url('../fonts/DejaVuSansMono.woff') format('woff');
+  src: local('DejaVu Sans Mono'), url('fonts/DejaVuSansMono.woff') format('woff');
 }
 #statistics {
   background: transparent;
@@ -448,7 +448,7 @@ canvas {
   left: calc(100% - 14em - 28px);
 }
 #statistics .hook {
-  background-image: url("../images/statistics.png");
+  background-image: url("images/statistics.png");
   background-position: left center;
   background-repeat: no-repeat;
   position: absolute;

@@ -2182,7 +2182,12 @@ if (!MEW) {
         for ( var i = 0; i < optionsSet.length; i += 1 )
         {
             var options = optionsSet[ i ];
-            var storedOptionsString = localStorage.getItem( options.name );
+
+            var storedOptionsString = null;
+            try {
+                storedOptionsString = localStorage.getItem( options.name );
+            } catch ( ex ) { }
+
             if ( storedOptionsString ) 
             {
                 var storedOptions = JSON.parse( storedOptionsString );
@@ -2429,7 +2434,10 @@ if (!MEW) {
             var options = aOptionsSet[ i ];
             var newOptions = getNewOptions( options.page );
             options.owner.setOptions( newOptions );
-            localStorage.setItem( options.name, JSON.stringify( newOptions ) );
+
+            try {
+                localStorage.setItem( options.name, JSON.stringify( newOptions ) );
+            } catch ( ex ) { }
         }
     }
 
@@ -2494,10 +2502,14 @@ if (!MEW) {
     // reset
     function resetOptions( aOptionsSet )
     {
-        for ( var i = 0; i < aOptionsSet.length; i += 1 ) {
-            localStorage.removeItem( aOptionsSet[ i ].name );
+        try
+        {
+            for ( var i = 0; i < aOptionsSet.length; i += 1 ) {
+                localStorage.removeItem( aOptionsSet[ i ].name );
+            }
+            window.location.reload();
         }
-        window.location.reload();
+        catch ( ex ) { }
     }
 
     app.Options = Options;
