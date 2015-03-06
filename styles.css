@@ -288,7 +288,6 @@ canvas {
   background: #568647;
   color: #000000;
 }
-#options .central .tabs .pages .page .option .value input[type="number"]:hover,
 #options .central .tabs .pages .page .option .value input[type="number"]:focus {
   -moz-appearance: number-input;
 }

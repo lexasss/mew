@@ -153,7 +153,22 @@
             infectionDecrease: 0.005,
             aliveThreshold: 0.1,
             hungerThreshold: 0.8,    // energy, relative to the max energy
-            foodRate: 3              // relation between victim energy/size and energy amount the animal gets
+            foodRate: 3,             // relation between victim energy/size and energy amount the animal gets
+            maxEatenPerStep: 0.075
+        },
+
+        speed: {
+            age: {
+                baby: 0.5,
+                child: 0.7,
+                youth: 0.9
+            },
+            random: {
+                min: -0.2,
+                max: 0.1
+            },
+            fastDecreaseThreshold: 0.25,
+            maxChangePerStep: 0.25
         },
 
         victimSearchSkippingSteps: 5,
@@ -286,7 +301,7 @@
             this.lastMoveAngle = aMoveAngle;
         }
         else {
-            this.lastMoveAngle += Math.PI / 2 + Math.random() * Math.PI;
+            this.lastMoveAngle += Math.PI * ( 0.5 + Math.random() );
         }
 
         return canLiveInNewCell;
@@ -314,26 +329,28 @@
 
     Animal.prototype.getMoveSpeed = function ()
     {
+        var speedOpts = this.iOptions.speed;
         var ageScale = 1;
         if ( this.age === Animal.Age.BABY ) {
-            ageScale = 0.5;
+            ageScale = speedOpts.age.baby;
         } else if ( this.age === Animal.Age.CHILD ) {
-            ageScale = 0.7;
+            ageScale = speedOpts.age.child;
         } else if ( this.age === Animal.Age.YOUTH ) {
-            ageScale = 0.9;
+            ageScale = speedOpts.age.youth;
         }
 
-        var huntingScale = this.isChased() ? 1 : ( this.isHungry() ? 3 / ( 3 + this.getEnergy() ) : this.iOptions.relaxedSpeed );
+        var energy = this.getEnergy();
+        var huntingScale = this.isChased() ? 1 : ( this.isHungry() ? 3 / ( 3 + energy ) : this.iOptions.relaxedSpeed );
         if ( this.iVictim ) {
             huntingScale *= this.iOptions.chasingScale;
         }
-        var moveSpeed = Math.max( 0, -0.2 + 0.3 * Math.random() + // app.Utils.randomInRange( -0.2, 0.1 ) +
+        var moveSpeed = Math.max( 0, app.Utils.randomInRange( speedOpts.random.min, speedOpts.random.max ) +
             this.iGenes.set.moveSpeed * 
             ageScale *
             huntingScale *
-            Math.pow( this.getEnergy(), 0.25 ) );
+            ( energy < speedOpts.fastDecreaseThreshold ? 1 / speedOpts.fastDecreaseThreshold * energy : 1 ) );
 
-        this.iMoveSpeed += app.Utils.limit( moveSpeed - this.iMoveSpeed, -0.25, 0.25 );
+        this.iMoveSpeed += app.Utils.limit( moveSpeed - this.iMoveSpeed, -speedOpts.maxChangePerStep, speedOpts.maxChangePerStep );
         return this.iMoveSpeed;
     };
 
@@ -508,8 +525,9 @@
     {
         var genes = this.iGenes.set;
         var victim = this.iVictim;
+        var energyOpts = this.iOptions.energy;
 
-        var result = -this.iOptions.energy.decreasePerStep * 
+        var result = -energyOpts.decreasePerStep * 
             ( 1 + this.iMoveSpeed ) / 2 * 
             ( 1 + genes.size ) / 2 *
             ( 4 + genes.sensorSize ) / 5;
@@ -517,25 +535,16 @@
         if ( victim )
         {
             var eatedEnergy = Math.min( victim.energy,
-                0.075 * 
+                energyOpts.maxEatenPerStep * 
                 ( 1 + genes.size ) / 2 );
             victim.looseEnergy( eatedEnergy );
-            result += eatedEnergy / this.iOptions.energy.foodRate;
+            result += eatedEnergy / energyOpts.foodRate;
         }
 
         if ( this.isInfected ) {
             result -= iOptions.energy.infectionDecrease;
         }
 
-if (isNaN(result)) {
-    console.log(victim);
-    console.log(this.iMoveSpeed);
-    console.log(this.iOptions.energy.decreasePerStep);
-    console.log(genes.size);
-    console.log(genes.sensorSize);
-    console.log(iOptions.energy.infectionDecrease);
-    console.log(this.iOptions.energy.foodRate);
-}
         return result;
     }
 
@@ -757,7 +766,7 @@ if (!MEW) {
 			if ( evt !== undefined ) {
 				evt.push( aCallback );
 			}
-		};
+		}
 
 		function removeCallback( aName, aCallback )
 		{
@@ -770,7 +779,7 @@ if (!MEW) {
       				}
     			}
 			}
-		};
+		}
 
 		function fire( aName, aArgs )
 		{
@@ -780,7 +789,7 @@ if (!MEW) {
 					evt[ i ].call( this, aArgs );
 				}
 			}
-		};
+		}
 	}
 
     app.EventSource = EventSource;
@@ -826,15 +835,24 @@ if (!MEW) {
                 background: '#FFCCCC',
                 frame: '#444444',
                 visibleField: '#444488'
-            }
+            },
+            infected: '#FF0000'
         },
         wind: {
             strengthScale: 50,
             arrowPoint: {
                 x: 70,
                 y: 70
-            }
+            },
+            penWidth: 5
         },
+        infection: {
+            x: 10,
+            y: -10,
+            width: 3,
+            height: 3
+        },
+        moistureWeight: 0.4,
         updateInterval: 40
     };
 
@@ -921,7 +939,7 @@ if (!MEW) {
                 msPerFrame: iMsecPerFrame.avg
             };
         default:
-            throw new Error( 'Wrong tab ID' );
+            throw new Error( 'Wrong statistics tab ID' );
         }
     };
 
@@ -1075,8 +1093,9 @@ if (!MEW) {
             }
             if ( obj.isInfected )
             {
-                iGraphics.fillStyle = '#FF0000';
-                iGraphics.fillRect( x + 10, y - 10, 3, 3);
+                iGraphics.fillStyle = iOptions.colors.infected;
+                var infRect = iOptions.infection;
+                iGraphics.fillRect( x + infRect.x, y + infRect.y, infRect.width, infRect.height);
             }
         }
         return aObjects.length;
@@ -1122,7 +1141,7 @@ if (!MEW) {
         iGraphics.closePath();
 
         iGraphics.strokeStyle = iOptions.colors.wind.arrow;
-        iGraphics.lineWidth = 5;
+        iGraphics.lineWidth = iOptions.wind.penWidth;
         iGraphics.stroke();
     }
 
@@ -1150,7 +1169,7 @@ if (!MEW) {
         var color = iOptions.colors.water;
         if ( !aCell.isWater )
         {
-            var waterWeight = 0.4 * aCell.moisture;
+            var waterWeight = iOptions.moistureWeight * aCell.moisture;
             color = app.Colors.mix( [ 
                 { color: iOptions.colors.soilPoor, weight: ( 1 - waterWeight ) * ( 1 - aCell.richness ) },
                 { color: iOptions.colors.soilRich, weight: ( 1 - waterWeight ) * aCell.richness },
@@ -1224,7 +1243,7 @@ if (!MEW) {
         var cell = iWorld.getSoilCell( aCol, aRow );
         var isWater = false;
         if ( !cell || !cell.moisture ) {
-            iSoilGraphics.fillStyle = '#FF0000';
+            iSoilGraphics.fillStyle = '#FF0000';    // for debug
         }
         else
         {
@@ -1327,7 +1346,7 @@ if (!MEW) {
         windGraphics.fill();
         windGraphics.globalAlpha = 1;
 
-        windGraphics.lineWidth = 5;
+        windGraphics.lineWidth = iOptions.wind.penWidth;
         windGraphics.strokeStyle = windColors.arrow;
         windGraphics.stroke();
         windGraphics.strokeStyle = windColors.circle.border;
@@ -1338,7 +1357,7 @@ if (!MEW) {
         var text = 'WIND';
 
         windGraphics.textAlign = 'center'; 
-        windGraphics.font = 'bold 28px Oswald';
+        windGraphics.font = 'bold 28px "Roboto Condensed Regular", "Arial", san-serifs';
         windGraphics.textBaseline = 'top'; 
 
         windGraphics.lineWidth = 1;
@@ -1606,6 +1625,12 @@ if (!MEW) {
             interval: 20,
             size: 8
         },
+        keys: {
+            left: 37,
+            up: 38,
+            right: 39,
+            down: 40
+        },
         maxSize: 100
 	};
 
@@ -1820,13 +1845,13 @@ if (!MEW) {
         iShiftDirection.y = 0;
         var startTimer = true;
 
-        if ( aEvent.keyCode === 37 ) {
+        if ( aEvent.keyCode === iOptions.keys.left ) {
             iShiftDirection.x = -1;
-        } else if ( aEvent.keyCode === 39 ) {
+        } else if ( aEvent.keyCode === iOptions.keys.right ) {
             iShiftDirection.x = 1;
-        } else if ( aEvent.keyCode === 38 ) {
+        } else if ( aEvent.keyCode === iOptions.keys.up ) {
             iShiftDirection.y = -1;
-        } else if ( aEvent.keyCode === 40 ) {
+        } else if ( aEvent.keyCode === iOptions.keys.down ) {
             iShiftDirection.y = 1;
         } else {
             startTimer = false;
@@ -1844,10 +1869,10 @@ if (!MEW) {
 
     function onKeyUp( aEvent )
     {
-        var stopTimer = aEvent.keyCode === 37 ||
-                        aEvent.keyCode === 38 ||
-                        aEvent.keyCode === 39 ||
-                        aEvent.keyCode === 40;
+        var stopTimer = aEvent.keyCode === iOptions.keys.left ||
+                        aEvent.keyCode === iOptions.keys.up ||
+                        aEvent.keyCode === iOptions.keys.right ||
+                        aEvent.keyCode === iOptions.keys.down;
 
         if ( stopTimer && iShiftTimer ) 
         {
@@ -1973,17 +1998,19 @@ if (!MEW) {
                 items: [
                     { path: 'size.width', title: 'Width, cells', description: 'Width in cells', min: 100, max: 1000, step: 5 },
                     { path: 'size.height', title: 'Height, cells', description: 'Height in cells', min: 100, max: 1000, step: 5 },
-                    { path: 'plants.areaPerInitUnit', title: 'Area per unit/ c^2/u', description: 'Initial area per plant, square cells / plant', min: 10, max: 200, step: 5 },
+                    { path: 'waterAverageFactor', title: 'Water average level factor', description: 'Factor F used in to calculate water threshold using formula `1 - F + F * AVG`, where AVG if the average soil moisture', min: 0.2, max: 1, step: 0.05 },
+                    { path: 'plants.areaPerInitUnit', title: 'Area per unit, c^2/u', description: 'Initial area per plant, square cells / plant', min: 10, max: 200, step: 5 },
+                    { path: 'seeds.randomElevationPerStep', title: 'Elevation descrease', description: 'Random part or elevation decrease per step', min: 0.5, max: 0.9, step: 0.05 },
                     { path: 'vegeterians.maxMoveSpeed', title: 'Move distance, px', description: 'Maximum distance a creature can move per tick', min: 3, max: 12, step: 1 },
                     { path: 'vegeterians.windMoveScale', title: 'Move by wind, px', description: 'Maximum distance to travel due to the wind', min: 0, max: 5, step: 0.1 },
                     { path: 'vegeterians.maxAngleChange', title: 'Angle change, rad', description: 'Maximum angle a creature can turn per stap', min: 0.1, max: 1, step: 0.05 },
                     { path: 'vegeterians.maxVisionDistance', title: 'Vision distance, px', description: 'Maximum distance a creature can notify food from', min: 5, max: 15, step: 1 },
-                    { path: 'vegeterians.areaPerInitUnit', title: 'Area per unit', description: 'Initial are per creature, square cells / creature', min: 500, max: 2000, step: 20 },
+                    { path: 'vegeterians.areaPerInitUnit', title: 'Area per unit, c^2/u', description: 'Initial are per creature, square cells / creature', min: 500, max: 2000, step: 20 },
                     { path: 'predators.maxMoveSpeed', title: 'Move distance, px', description: 'Maximum distance a creature can move per tick', min: 3, max: 12, step: 1 },
                     { path: 'predators.windMoveScale', title: 'Move by wind, px', description: 'Maximum distance to travel due to the wind', min: 0, max: 5, step: 0.1 },
                     { path: 'predators.maxAngleChange', title: 'Angle change, rad', description: 'Maximum angle a creature can turn per stap', min: 0.1, max: 1, step: 0.05 },
                     { path: 'predators.maxVisionDistance', title: 'Vision distance, px', description: 'Maximum distance a creature can notify food from', min: 10, max: 25, step: 1 },
-                    { path: 'predators.areaPerInitUnit', title: 'Area per unit', description: 'Initial are per creature, square cells / creature', min: 2000, max: 10000, step: 200 },
+                    { path: 'predators.areaPerInitUnit', title: 'Area per unit, c^2/u', description: 'Initial are per creature, square cells / creature', min: 2000, max: 10000, step: 200 },
                     { path: 'seeds.moveScale', title: 'Move per tick, cells', description: 'Maximum distance a seed can travel per tick', min: 0.5, max: 5, step: 0.5 },
                     { path: 'seeds.dropScale', title: 'Drop per tick, r.u.', description: 'Maximum height drop per tick, in relative units of the plant height (adjustable)', min: 0.1, max: 1, step: 0.1 },
                     { path: 'infection.vegeterians.enabled' },
@@ -2011,14 +2038,19 @@ if (!MEW) {
                     { path: 'colors.wind.circle.alpha', title: 'Opaqueness', min: 0.3, max: 1, step: 0.1 },
                     { path: 'colors.wind.text.fill', title: 'Background' },
                     { path: 'colors.wind.text.stroke', title: 'Border' },
-                    { path: 'colors.highLoadIndicator.stroke', title: 'Border' },
-                    { path: 'colors.highLoadIndicator.fill', title: 'Background' },
                     { path: 'colors.minimap.background' },
                     { path: 'colors.minimap.frame', title: 'Border' },
                     { path: 'colors.minimap.visibleField', title: 'Viewport border' },
+                    { path: 'colors.infected', title: 'Infected creature', description: 'Color of creature infection indicator' },
+                    { path: 'infection.x', title: 'Offset X, px', description: 'Infection indicator horizontal offset from the creature`s center', min: -20, max: 20, step: 1 },
+                    { path: 'infection.y', title: 'Offset Y, px', description: 'Infection indicator vertical offset from the creature`s center', min: -20, max: 20, step: 1 },
+                    { path: 'infection.width', title: 'Width, px', description: 'Infection indicator width', min: 2, max: 20, step: 1 },
+                    { path: 'infection.height', title: 'Height, px', description: 'Infection indicator height', min: 2, max: 20, step: 1 },
                     { path: 'wind.strengthScale', title: 'Size, px', description: 'Size of the wind radar', min: 20, max: 70, step: 5 },
                     { path: 'wind.arrowPoint.x', title: 'X or radar center, px', description: 'Radar position, x coordinate', min: 20, max: 150, step: 5 },
                     { path: 'wind.arrowPoint.y', title: 'Y or radar center, px', description: 'Radar position, y coordinate', min: 20, max: 150, step: 5 },
+                    { path: 'wind.penWidth', title: 'Pen size, px', description: 'Border and arrow pen sie', min: 2, max: 10, step: 1 },
+                    { path: 'moistureWeight', title: 'Moisture weight', description: 'The weight of moisture when mixing soil color with water color', min: 0.2, max: 0.8, step: 0.05 },
                     { path: 'updateInterval', title: 'Time per frame, ms', description: 'Desired time span to spend between world redraws', min: 10, max: 50, step: 5 }
                 ]
             }, {
@@ -2046,7 +2078,9 @@ if (!MEW) {
                     { path: 'height', title: 'Height, r.u.', description: 'Maximum plant height in relative units', min: 10, max: 100, step: 5 },
                     { path: 'seedCount', title: 'Seed count', description: 'Maximum number of seed a plant can deliver', min: 1, max: 8, step: 1 },
                     { path: 'energy.increasePerStep', title: 'Increase per tick', description: 'Increase of energy per tick', min: 0.001, max: 0.010, step: 0.001 },
-                    { path: 'energy.decreasePerDensity', title: 'Decrease due cohabitance', description: 'Decrease of energy per tick due cohabitance', min: 0.001, max: 0.020, step: 0.001 }
+                    { path: 'energy.decreasePerDensity', title: 'Decrease due cohabitance', description: 'Decrease of energy per tick due cohabitance', min: 0.001, max: 0.020, step: 0.001 },
+                    { path: 'energy.aliveThreshold', title: 'Health threshold', description: 'The threshold to stay `alive`: a plant dies quickly if energy drops below it', min: 0.05, max: 0.25, step: 0.05 },
+                    { path: 'energy.eatableThreshold', title: 'Threshold to be a food', description: 'The threshold to be `eatable`: animal do not eat the plant if its energy drops below this threshold ', min: 0.01, max: 0.2, step: 0.01 }
                 ]
             }, {
                 name: 'Vegetarians',
@@ -2534,7 +2568,9 @@ if (!MEW) {
         
         energy: {
             increasePerStep: 0.005,
-            decreasePerDensity: 0.010
+            decreasePerDensity: 0.010,
+            aliveThreshold: 0.2,
+            eatableThreshold: 0.1
         },
         
         richnessDep: Math.sqrt,
@@ -2588,7 +2624,7 @@ if (!MEW) {
         this.energy += energyChange; //getEnergyChange( aNeighbours );
         this.energy = app.Utils.limit( this.energy, 0.001, 1 );
 
-        if ( this.energy < 0.2 && this.age <= Plant.Age.SEEDS )
+        if ( this.energy < iOptions.energy.aliveThreshold && this.age <= Plant.Age.SEEDS )
         {
             this.iCurrentStageAge = 0;
             if ( this.age === Plant.Age.SEED ) {
@@ -2641,7 +2677,7 @@ if (!MEW) {
     };
 
     Plant.prototype.isEatable = function () {
-        return this.energy >= 0.1 && this.age > Plant.Age.SEED;
+        return this.energy >= iOptions.energy.eatableThreshold && this.age > Plant.Age.SEED;
     };
 
     Plant.prototype.isVanished = function () {
@@ -2720,20 +2756,6 @@ if (!MEW) {
         for ( var i = 0; i < count; ++i ) {
             aSeeds.push( new app.Seed( aGenesObj.mutate(), aCell, genes.height * iOptions.height ) );
         }
-    }
-
-    function getEnergyChange( aNeighbours )
-    {
-        var result = 0.005;
-        aNeighbours.forEach( function( aCount, aLevel ) {
-            result -= 0.006 * aCount / ( 1 + 1 * aLevel );
-        } );
-        // for ( var level = 0; level < aNeighbours.length; ++level ) {
-        //     if ( aNeighbours[ level ] ) {
-        //         result -= 0.006 * aNeighbours[ level ] / ( 1 + 1 * level );
-        //     }
-        // }
-        return result;
     }
 
     // static
@@ -2994,7 +3016,7 @@ if (!MEW) {
         }
         
         setInterval( update, 1000 );
-    }
+    };
     
     
     var iWorld;
@@ -3721,6 +3743,7 @@ if (!MEW) {
             fertilization: 0.0,        // 0..1 (added to richness, per plant; 0 to disable)
             dehydration: 0.0           // 0..1 (subtracted from moisture, per plant; 0 to disable)
         },
+        waterAverageFactor: 0.7,
         plants: {
             neighboursAffect: 1,        // cells
             areaPerInitUnit: 50         // cells^2 / unit
@@ -3741,7 +3764,8 @@ if (!MEW) {
         },
         seeds: {
             moveScale: 2,       // cells
-            dropScale: 0.3      // units
+            dropScale: 0.3,     // units
+            randomElevationPerStep: 0.7
         },
         infection: {
             vegeterians: {
@@ -4013,7 +4037,7 @@ if (!MEW) {
 //alert( 'Soil initialized in ' + ((new Date()).getTime() - startTime) +' ms' );
         
         avgMoisture = avgMoisture / iOptions.size.width / iOptions.size.height;
-        iWaterThreshold = 0.3 + 0.7 * avgMoisture;
+        iWaterThreshold = (1 - iOptions.waterAverageFactor) + iOptions.waterAverageFactor * avgMoisture;
         for ( col = 0; col < iOptions.size.width; ++col ) {
             for ( row = 0; row < iOptions.size.height; ++row ) {
                 soilCell = iField[ col ][ row ];
@@ -4305,7 +4329,8 @@ if (!MEW) {
                 dx: Math.round( baseMove.cols + random( -1, 1 ) * moveScale ), //(2 * Math.random() - 1) * moveScale ),
                 dy: Math.round( baseMove.rows + random( -1, 1 ) * moveScale )  //(2 * Math.random() - 1) * moveScale )
             };
-            var elevationChange = baseElevationChange + dropScale * ( 0.3 + 0.7 * Math.random() - windStrength ); // random( 0.3 - windStrength, 1 - windStrength )
+            var randElevation = iOptions.seeds.randomElevationPerStep;
+            var elevationChange = baseElevationChange + dropScale * ( ( 1 - randElevation ) + randElevation * Math.random() - windStrength ); // random( 0.3 - windStrength, 1 - windStrength )
             seed.moveBy( move, elevationChange );
 
             // find dropped seeds, get new plats is possible
