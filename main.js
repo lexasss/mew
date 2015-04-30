@@ -815,6 +815,7 @@ if (!MEW) {
             soilPoor: '#AB9465', //'#F2BA4F',
             soilRich: '#32312E',
             water: '#0080D8', //'rgba(0, 128, 216, 1)' //'#0080D8'
+            seeds: '#FF00FF', // only if showSeeds === true
             wind: {
                 arrow: '#FF8040',
                 circle: {
@@ -853,6 +854,7 @@ if (!MEW) {
             height: 3
         },
         moistureWeight: 0.4,
+        showSeeds: false,
         updateInterval: 40
     };
 
@@ -1052,6 +1054,11 @@ if (!MEW) {
             var image = iPlantSprites[ plant.age ];
             if ( image ) {
                 iGraphics.drawImage( image, x - image.width / 2, y - image.height );
+            }
+            else if ( iOptions.showSeeds )
+            {
+                iGraphics.fillStyle = iOptions.colors.seeds;
+                iGraphics.fillRect( x - 2, y - 3, 4, 3);
             }
         }
         return plants.length;
@@ -1636,6 +1643,10 @@ if (!MEW) {
 
 	function Minimap( aCanvas, aMapSize ) 
 	{
+        if (this instanceof Minimap && !iInstance) {
+            iInstance = this;
+        }
+
 		iCanvasSize = { width: aCanvas.width, height: aCanvas.height };
         iMapSize = aMapSize;
 
@@ -1646,6 +1657,7 @@ if (!MEW) {
         aCanvas.addEventListener( 'click', onCanvasClick );
         document.addEventListener( 'keydown', onKeyDown );
         document.addEventListener( 'keyup', onKeyUp );
+        app.GazePoint.addEventListener( 'fixation', onFixation );
 
         var maxDimension = Math.max( iMapSize.width, iMapSize.height );
         var ratio = iOptions.maxSize / maxDimension;
@@ -1740,6 +1752,8 @@ if (!MEW) {
     // ------------------------------------------------
     // Private
     // ------------------------------------------------
+
+    var iInstance = null;
 
     var iCanvasSize;
     var iMapSize;
@@ -1881,6 +1895,15 @@ if (!MEW) {
             iLastShiftAt = null;
         }
     }
+
+    function onFixation( aFixation )
+    {
+        var evt = {
+            clientX: aFixation.x,
+            clientY: aFixation.y
+        };
+        onCanvasMouseMove( evt );
+    }
     
     function isPointOnMinimap( aX, aY ) {
         return iLocation.x < aX && aX < iCanvasSize.width && iLocation.y < aY && aY < iCanvasSize.height;
@@ -1928,6 +1951,11 @@ if (!MEW) {
 
     // module export
     app.Minimap = Minimap;
+    app.View = {
+        offset: function () {
+            return iInstance.getOffset();
+        }
+    };
 
 })( MEW );
 
@@ -2032,6 +2060,7 @@ if (!MEW) {
                     { path: 'colors.soilPoor', title: 'Poor soil' },
                     { path: 'colors.soilRich', title: 'Rich soil' },
                     { path: 'colors.water', title: 'Water' },
+                    { path: 'colors.seeds', title: 'Seeds', description: 'Applied only if "Show seeds" is set to "true"' },
                     { path: 'colors.wind.arrow' },
                     { path: 'colors.wind.circle.border', title: 'Border' },
                     { path: 'colors.wind.circle.fill', title: 'Background' },
@@ -2050,6 +2079,7 @@ if (!MEW) {
                     { path: 'wind.arrowPoint.x', title: 'X or radar center, px', description: 'Radar position, x coordinate', min: 20, max: 150, step: 5 },
                     { path: 'wind.arrowPoint.y', title: 'Y or radar center, px', description: 'Radar position, y coordinate', min: 20, max: 150, step: 5 },
                     { path: 'wind.penWidth', title: 'Pen size, px', description: 'Border and arrow pen sie', min: 2, max: 10, step: 1 },
+                    { path: 'showSeeds', title: 'Show seeds', description: 'If checked, show seeds landed to soil' },
                     { path: 'moistureWeight', title: 'Moisture weight', description: 'The weight of moisture when mixing soil color with water color', min: 0.2, max: 0.8, step: 0.05 },
                     { path: 'updateInterval', title: 'Time per frame, ms', description: 'Desired time span to spend between world redraws', min: 10, max: 50, step: 5 }
                 ]
@@ -2143,6 +2173,26 @@ if (!MEW) {
                 items: [
                     { path: 'alert.lifetime', title: 'Life-time, ms', description: 'Time interval to memorize high-load alert', min: 500, max: 5000, step: 100 },
                     { path: 'alert.minCount', title: 'Minimum count', description: 'Minimum count of memorized alert to show the indicator', min: 2, max: 20, step: 1 }
+                ]
+            }, {
+                name: 'Gaze Point',
+                icon: 'gazepoint.png',
+                owner: MEW.GazePoint,
+                items: [
+                    { path: 'enabled' },
+                    { path: 'device', title: 'Device', description: 'The device to use for tracking' },
+                    { path: 'frequency', title: 'Sampling frequency', description: 'Set to 0 to use native tracker sampling frequency', min: 0, max: 50, step: 5 },
+                    { path: 'smoothing.enabled' },
+                    { path: 'smoothing.low', title: 'Low-pass factor', description: 'The factor to be applied in the smoothing filter during fixations', min: 100, max: 1000, step: 50 },
+                    { path: 'smoothing.high', title: 'High-pass factor', description: 'The factor to be applied in the smoothing filter during saccades', min: 5, max: 50, step: 5 },
+                    { path: 'smoothing.timeWindow', title: 'Time window, ms', description: 'Time window to filter samples to be used for eye motion type detection', min: 50, max: 200, step: 10 },
+                    { path: 'smoothing.threshold', title: 'Threshold, px', description: 'Threshold to separate eye motion types', min: 15, max: 80, step: 5 },
+                    { path: 'fixdet.maxFixSize', title: 'Fixation size threshold, px', description: 'Maximum size of fixation', min: 15, max: 80, step: 5 },
+                    { path: 'fixdet.bufferLength', title: 'Time window, samples', description: 'Number of samples to be used to detect the fixation end', min: 4, max: 12, step: 1 },
+                    { path: 'gravity.radius', title: 'Radius, px', description: 'The distance from the gaze point of the maximum attractions', min: 50, max: 250, step: 10 },
+                    { path: 'gravity.sigma', title: 'Dispersion, px', description: 'The graviry dispersion from the maximum value', min: 10, max: 100, step: 5 },
+                    { path: 'gravity.amplitude', title: 'Amplitude, px', description: 'The maximum change in the attracted object`s location', min: 3, max: 20, step: 1 },
+                    { path: 'dwellTime', title: 'Dwell time, ms', description: 'Minimum pause after the fixation started to apply the gravity', min: 200, max: 2200, step: 100 }
                 ]
             }
         ];
@@ -2513,8 +2563,22 @@ if (!MEW) {
                 }
                 else 
                 {
-                    value = value.value;
-                    prop[ propName ] = value[ 0 ] === '#' ? value : +value;
+                    var val = value.value;
+                    if ( value.type === 'color' || value.type === 'text' ) {
+                        prop[ propName ] = val;
+                    }
+                    else if ( value.type === 'number' ) {
+                        prop[ propName ] = +val;
+                    }
+                    else {
+                        throw 'Unknown options` control type';
+                    }
+                    /*
+                    if ( value[ 0 ] === '#' ) {
+                        prop[ propName ] = value;
+                    } else {
+                        prop[ propName ] = +value;
+                    }*/
                 }
             }
         }
@@ -3783,7 +3847,12 @@ if (!MEW) {
         agingInterval: 40       // ms
     };
 
-    function World( aOptions )
+    // Constructor
+    // Params:
+    //  - aOptions: adjusted options
+    //  - aAsyncCompletionFunc: asyncronous completion function. If the comletion must NOT be excuted
+    //                          immideately, then it get a member 'defer; set to 'true'
+    function World( aOptions, aAsyncCompletionFunc )
     {
         app.Utils.extend( true, iOptions, aOptions );
         
@@ -3796,7 +3865,13 @@ if (!MEW) {
         initVegeterians();
         initPredators();
 
+        var deferCompletion = initGazePoint( aAsyncCompletionFunc );
+
         iEventHandlers[ 'cellUpdate' ] = [];
+
+        if (!deferCompletion) {
+            setTimeout( aAsyncCompletionFunc, 50 );
+        }
     }
 
     World.prototype.start = function ()
@@ -4084,6 +4159,17 @@ if (!MEW) {
             var predator = new app.Predator( app.Genes.forPredator(), field.cell );
             iPredators.push( predator );
         }
+    }
+
+    function initGazePoint( aAsyncCompletionFunc )
+    {
+        if (!app.GazePoint.getOptions().enabled)
+            return false;
+
+        app.GazePoint.addEventListener( 'connected', function () { console.log('WS connected'); });
+        app.GazePoint.addEventListener( 'disconnected', function () { console.log('WS disconnected'); });
+        app.GazePoint.connect( null, aAsyncCompletionFunc );
+        return true;
     }
 
     function findProperField( aIsWaterAcceptable, aIsSoilAcceptable )
@@ -4439,18 +4525,20 @@ if (!MEW) {
 
     function tryToMoveAnimal( aAnimal, aMove, aAngle )
     {
-        var newVegCoords = { x: aAnimal.coords.x + aMove.dx, y: aAnimal.coords.y + aMove.dy };
-        var validation = validateCoords( newVegCoords );
+        var newCoords = { x: aAnimal.coords.x + aMove.dx, y: aAnimal.coords.y + aMove.dy };
+        newCoords = app.GazePoint.hold( newCoords );
+
+        var validation = validateCoords( newCoords );
         if ( validation.isCorrected ) 
         {
-            newVegCoords = validation.coords;
+            newCoords = validation.coords;
             aAngle += Math.PI / 2 + Math.random() * Math.PI;
         }
         
-        var newVegCell = coords2cell( newVegCoords );
-        var isWaterCell = iField[ newVegCell.col ][ newVegCell.row ].isWater;
+        var newCell = coords2cell( newCoords );
+        var isWaterCell = iField[ newCell.col ][ newCell.row ].isWater;
         
-        return aAnimal.moveTo( newVegCoords, newVegCell, aAngle, isWaterCell );
+        return aAnimal.moveTo( newCoords, newCell, aAngle, isWaterCell );
     }
 
     function chaseVictim( aVictimCell, aChaser, aMoveDistance )
@@ -4616,3 +4704,722 @@ if (!MEW) {
     app.World = World;
 
 })( MEW );
+
+/* Module to gaze input
+ * Exports static GazePoint and Cage objects
+ *
+ * Usage: 
+ *     Initialization:
+ *     MEW.GazePoint.connect() 
+ *     
+ *     Update cycle:
+ *     MEW.Cage.bind( creature_coordinates ) 
+ */
+
+(function ( app ) {
+    'use strict';
+
+    app = app || window;
+
+    var iOptions = {
+        enabled: true,
+        device: '',
+        frequency: 0,           // sampling frequency in Hz, between 10 and 1000 (other values keep the original tracker frequency)
+        smoothing: {            // Olsson filter
+            enabled: false,
+            low: 300,
+            high: 10,
+            timeWindow: 100,
+            threshold: 25
+        },
+        fixdet: {
+            maxFixSize: 70,     // pixels
+            bufferLength: 6    // samples
+        },
+        gravity: {
+            radius: 60,  // pixels
+            sigma: 20,   // pixels
+            amplitude: 7 // pixels
+        },
+        dwellTime: 800  // ms
+    };
+
+    var pixelConverter = (function () {
+        var zoom = { x: 1.0, y: 1.0 };
+        var offset = { x: 0, y: 0 };
+
+        var update = function () {
+
+            if (typeof devicePixelRatio === 'undefined') {    // old Firefox
+
+                var zoomLevel = (function ( precision ) {
+                    var cycles = 0;
+                    var searchZoomLevel = function ( level, min, divisor ) {
+                        var wmq = window.matchMedia;
+                        while ( level >= min && !wmq( '(min-resolution: ' + (level / divisor) + 'dppx)' ).matches ) {
+                            level -= 1;
+                            cycles += 1;
+                        }
+                        return level;
+                    };
+
+                    var maxSearchLevel = 5.0;
+                    var minSearchLevel = 0.1;
+                    var divisor = 1;
+                    var result;
+                    var i;
+                    for ( i = 0; i < precision; i += 1 ) {
+                        result = 10 * searchZoomLevel( maxSearchLevel, minSearchLevel, divisor );
+                        maxSearchLevel = result + 9;
+                        minSearchLevel = result;
+                        divisor *= 10;
+                    }
+
+                    return result / divisor;
+                })( 5 );
+
+                zoom = {
+                    x: zoomLevel,
+                    y: zoomLevel
+                };
+            } 
+            else {    // Chrome, new Firefox
+                zoom = {
+                    x: devicePixelRatio,
+                    y: devicePixelRatio
+                };
+            }
+
+            if ( window.mozInnerScreenX ) {   // Firefox
+                offset = {
+                    x: window.mozInnerScreenX * zoom.x,
+                    y: window.mozInnerScreenY * zoom.y
+                };
+            } 
+            else {  // Chrome
+                var innerWidth = window.innerWidth * zoom.x;
+                var innerHeight = window.innerHeight * zoom.y;
+
+                offset = {
+                    x: window.screenX + (window.outerWidth - innerWidth) / 2,
+                    y: window.screenY + (window.outerHeight - innerHeight) - (window.outerWidth - innerWidth) / 2
+                };
+            }
+        };
+
+        var screenToClient = function ( x, y ) {
+            return {
+                x: (x - offset.x) / zoom.x,
+                y: (y - offset.y) / zoom.y
+            };
+        };
+
+        var clientToScreen = function ( x, y ) {
+            return {
+                x: x * zoom.x + offset.x,
+                y: y * zoom.x + offset.y
+            };
+        };
+
+        var getScreenSize = function () {
+            var result;
+            if ( window.mozInnerScreenX ) {
+                result = {
+                    width: Math.round( screen.width * zoom.x ), 
+                    height: Math.round( screen.height * zoom.y )
+                };
+            }
+            else {
+                result = { width: screen.width, height: screen.height };
+            }
+            return result;
+        };
+
+        return {
+            update: update,
+            screenToClient: screenToClient,
+            clientToScreen: clientToScreen,
+            getScreenSize: getScreenSize
+        };
+    } )();
+
+    // The constructor takes data of its first sample
+    function Fixation ( ts, x, y ) {
+        this.ts = ts;
+        this.x = x;
+        this.y = y;
+        this.duration = 0;
+        this.saccade = { dx: 0, dy: 0 };
+        this.samples = [];
+    }
+
+    // params:
+    //  ts: timestamp in milliseconds
+    //  x: gaze x in pixels
+    //  y: gaze y in pixels
+    Fixation.prototype.addSample = function ( bufferLength, ts, x, y ) {
+        if ( this.samples.length == bufferLength ) {
+            this.samples.shift();
+        }
+
+        this.samples.push( { x: x, y: y } );
+        this.duration = ts - this.ts;
+
+        var fx = 0;
+        var fy = 0;
+        for ( var i = 0; i < this.samples.length; i += 1 ) {
+            var sample = this.samples[ i ];
+            fx += sample.x;
+            fy += sample.y;
+        }
+        this.x = fx / this.samples.length;
+        this.y = fy / this.samples.length;
+    };
+
+    function FixationDetector( settings ) {
+        
+        this.currentFix = null;
+
+        // Operational variables
+        var candidateFix = null;
+
+        // Must be called when new sample is available
+        // params:
+        //  ts: timestamp in milliseconds
+        //  x: gaze x in pixels
+        //  y: gaze y in pixels
+        // returns:
+        //  true if a new fixation starts, false otherwise
+        this.feed = function ( ts, x, y ) {
+            var result = false;
+            if ( !this.currentFix ) {
+                this.currentFix = new Fixation( ts, x, y );
+                result = true;
+            }
+            else if ( !candidateFix ) {
+                var dx = this.currentFix.x - x;
+                var dy = this.currentFix.y - y;
+                var dist = Math.sqrt( dx*dx + dy*dy );
+                if ( dist < settings.maxFixSize ) {
+                    this.currentFix.addSample( settings.bufferLength, ts, x, y );
+                } else {
+                    candidateFix = new Fixation( ts, x, y );
+                    candidateFix.saccade.dx = x - this.currentFix.x;
+                    candidateFix.saccade.dy = y - this.currentFix.y;
+                }
+            } else {
+                var dxCurr = this.currentFix.x - x;
+                var dyCurr = this.currentFix.y - y;
+                var distCurr = Math.sqrt( dxCurr*dxCurr + dyCurr*dyCurr );
+                var dxCand = candidateFix.x - x;
+                var dyCand = candidateFix.y - y;
+                var distCand = Math.sqrt( dxCand*dxCand + dyCand*dyCand );
+                if ( distCurr < settings.maxFixSize ) {
+                    this.currentFix.addSample( settings.bufferLength, ts, x, y );
+                }
+                else if ( distCand < settings.maxFixSize ) {
+                    //console.log('pref fix: '); console.dir(this.currentFix); console.log('new fix: '); console.dir(candidateFix);
+                    this.currentFix = candidateFix;
+                    candidateFix = null;
+                    this.currentFix.addSample( settings.bufferLength, ts, x, y );
+                    result = true;
+                }
+                else {
+                    candidateFix = new Fixation( ts, x, y );
+                    candidateFix.saccade.dx = x - this.currentFix.x;
+                    candidateFix.saccade.dy = y - this.currentFix.y;
+                }
+            }
+
+            return result;
+        };
+        
+        this.reset = function () {
+            this.currentFix = null;
+            candidateFix = null;
+        };
+    }
+
+    function Smoother( settings ) {
+        this.x = -1.0;
+        this.y = -1.0;
+        this.t = 0;
+        this.interval = 0;
+
+        this.buffer = [];
+
+        this.init = function () {
+            this.x = -1.0;
+            this.y = -1.0;
+            this.t = 0;
+            this.buffer = [];
+        };
+        
+        this.smooth = function ( ts, x, y ) {
+            if ( this.x < 0 && this.y < 0 && this.t === 0 ) {
+                this.x = x;
+                this.y = y;
+                this.t = settings.low;
+            }
+
+            var i;
+            var avgXB = 0,
+                avgYB = 0,
+                avgXA = 0,
+                avgYA = 0,
+                ptsBeforeCount = 0,
+                ptsAfterCount = 0,
+                validFilter = false;
+
+            this.buffer.push( { ts: ts, x: x, y: y } );
+
+            for ( i = 0; i < this.buffer.length; i += 1 ) {
+                var smp = this.buffer[i];
+                var dt = ts - smp.ts;
+                if ( dt > (2 * settings.timeWindow) ) {
+                    this.buffer.shift();
+                    validFilter = true;
+                }
+                else if ( dt > settings.timeWindow ) {
+                    avgXB += smp.x;
+                    avgYB += smp.y;
+                    ptsBeforeCount++;
+                }
+                else {
+                    avgXA += smp.x;
+                    avgYA += smp.y;
+                    ptsAfterCount++;
+                }
+            }
+
+            if ( ptsBeforeCount && ptsAfterCount ) {
+                avgXB = avgXB / ptsBeforeCount;
+                avgYB = avgYB / ptsBeforeCount;
+                avgXA = avgXA / ptsAfterCount;
+                avgYA = avgYA / ptsAfterCount;
+
+                var dx = avgXB - avgXA;
+                var dy = avgYB - avgYA;
+                var dist = Math.sqrt(dx*dx + dy*dy);
+
+                this.t = dist > settings.threshold ? settings.high : settings.low;
+            }
+
+            if ( validFilter && !this.interval && this.buffer.length > 1 ) {
+                var avgDT = 0;
+                for ( i = 1; i < this.buffer.length; i += 1 ) {
+                    avgDT += this.buffer[i].ts - this.buffer[i - 1].ts;
+                }
+
+                this.interval = avgDT / (this.buffer.length - 1);
+            }
+
+            if ( this.interval ) {
+                var alfa = this.t / this.interval;
+                this.x = (x + alfa * this.x) / (1.0 + alfa);
+                this.y = (y + alfa * this.y) / (1.0 + alfa);
+            }
+
+            return { x: this.x, y: this.y };
+        };
+    }
+
+    var gazePoint = (function() {
+
+        var request = {
+            showOptions: 'SHOW_OPTIONS',
+            calibrate: 'CALIBRATE',
+            toggleTracking: 'TOGGLE_TRACKING',
+            setDevice: 'SET_DEVICE'
+        };
+
+        var respondType = {
+            sample: 'sample',
+            state: 'state',
+            device: 'device'
+        };
+
+        var stateFlags = {
+            none: 0,            // not connected, or unknown
+            connected: 1,       // some tracker is online and is ready to be used
+            calibrated: 2,      // the tracker is calibrated and ready to stream data
+            tracking: 4,        // the tracker is streaming data
+            busy: 8             // the service is temporally unavailable (calibration is in progress, 'Options' window is shown, etc.)
+        };
+
+        var callbacks = {
+            connected: [],
+            disconnected: [],
+            fixation: []
+        };
+        
+        var websocket = null;
+        var smoother = null;
+        var fixdet = null;
+        var lastSample = null;
+        var samplingTimer = 0;
+        var buffer = [];
+        var sampleCount = 0;
+        var samplingStart = 0;
+        var currentStateFlags = stateFlags.none;
+        var state = {};
+        var currentDevice = '';
+        var asyncCompletionFunc = null;
+
+        var timerDeviceSet = null;
+        var timerCalibrate = null;
+        var timerToggleTracking = null;
+        var lastRequest = null;
+
+        window.addEventListener( 'beforeunload', function () {
+            if ( websocket && state.isTracking ) {
+                sendToWebSocket( request.toggleTracking );
+            }
+        });
+
+        var connect = function ( aOptions, aAsyncCompletionFunc ) {
+            if ( websocket ) {
+                return;
+            }
+
+            app.Utils.extend( true, iOptions, aOptions );
+
+            asyncCompletionFunc = aAsyncCompletionFunc;
+
+            websocket = new WebSocket( 'ws://localhost:8086/' );
+            websocket.onopen    = onWebSocketOpen;
+            websocket.onclose   = onWebSocketClose;
+            websocket.onmessage = onWebSocketMessage;
+            websocket.onerror   = onWebSocketError;
+
+            fixdet = new FixationDetector( iOptions.fixdet );
+
+            if ( iOptions.smoothing.enabled ) {
+                smoother = new Smoother( iOptions.smoothing );
+            }
+        };
+
+        var sendToWebSocket = function ( message ) {
+            console.log( 'ws: sent: ', message );
+            lastRequest = message;
+            websocket.send( message );
+        };
+
+        var onWebSocketOpen = function ( evt ) {
+            var connectEvent = callbacks.connected;
+            for ( var i = 0; i < connectEvent.length; i++ ) {
+                if ( typeof connectEvent[ i ] === 'function' ) {
+                    connectEvent[ i ]();
+                }
+            }
+        };
+
+        var onWebSocketClose = function ( evt ) {
+            var disconnectEvent = callbacks.disconnected;
+            for ( var i = 0; i < disconnectEvent.length; i++ ) {
+                if ( typeof disconnectEvent[ i ] === 'function' ) {
+                    disconnectEvent[ i ]();
+                }
+            }
+            websocket = null;
+        };
+
+        var onWebSocketMessage = function ( evt ) {
+            try {
+                var ge = JSON.parse( evt.data );
+                if ( ge.type === respondType.sample ) {
+                    if ( samplingTimer ) {
+                        buffer.push( { ts: ge.ts, x: ge.x, y: ge.y, pupil: ge.p, ec: ge.ec } );
+                    } else {
+                        applyData( ge.ts, ge.x, ge.y, ge.p, ge.ec );
+                    }
+                } else if ( ge.type === respondType.state ) {
+                    state = estimateState( ge.value );
+                    update( state );
+                    checkNeedOfAutomaticAction( state );
+                } else if ( ge.type === respondType.device ) {
+                    state = estimateState( undefined, ge.name );
+                    update( state );
+                    checkNeedOfAutomaticAction( state );
+                }
+            } catch ( e ) {
+                console.log( 'ws: onWebSocketMessage ex:', e );
+                console.dir( evt.data );
+            }
+        };
+
+        var onWebSocketError = function ( evt ) {
+            console.log( 'ws: onWebSocketError:', evt );
+        };
+
+        var update = function ( state ) {
+            pixelConverter.update();
+
+            if ( state.isTracking ) {
+                if ( iOptions.frequency >= 10 && iOptions.frequency <= 100 ) {
+                    samplingTimer = setTimeout( processData, 1000 / iOptions.frequency );
+                    samplingStart = Date.now();
+                    sampleCount = 0;
+                }
+                if ( smoother ) {
+                    smoother.init();
+                }
+                
+                lastSample = null;
+
+                fixdet.reset();
+            }
+            else {
+                if ( samplingTimer ) {
+                    clearTimeout( samplingTimer );
+                    samplingTimer = 0;
+                }
+            }
+        };
+
+        var checkNeedOfAutomaticAction = function ( state ) {
+            
+            console.log(Date.now());
+            console.dir(state);
+            var isRequiredDeviceSet = state.device === iOptions.device || iOptions.device.length === 0;
+            if ( !isRequiredDeviceSet ) {
+                if (!timerDeviceSet) {
+                    timerDeviceSet = setTimeout( function () { 
+                        sendToWebSocket( request.setDevice + ' ' + iOptions.device );
+                    }, 200);
+                }
+                return;
+            }
+
+            if ( isRequiredDeviceSet && state.isConnected ) {
+                if ( !state.isCalibrated && !timerCalibrate ) {
+                    timerCalibrate = setTimeout( function () { 
+                        app.GazePoint.calibrate();
+                    }, 200);
+                }
+                else if ( state.isCalibrated && !state.isTracking && !timerToggleTracking ) {
+                    timerToggleTracking = setTimeout( function () { 
+                        app.GazePoint.toggleTracking();
+                    }, 200);
+                }
+
+                if ( state.isTracking && asyncCompletionFunc ) {
+                    asyncCompletionFunc();
+                    asyncCompletionFunc = null;
+                }
+            }
+
+            if ( state.isBusy && lastRequest ) {
+                setTimeout( function () { sendToWebSocket( lastRequest ); }, 500 );
+            } else {
+                lastRequest = null;
+            }
+        };
+
+        var applyData = function ( ts, x, y, pupil, ec ) {
+            var point = pixelConverter.screenToClient( x, y );
+            
+            //if (typeof callbacks.sample === 'function') {
+            //    callbacks.sample(ts, point.x, point.y, pupil, ec);
+            //}
+
+            if ( smoother ) {
+                point = smoother.smooth( ts, point.x, point.y );
+            }
+
+            var isNewFixation = fixdet.feed( ts, point.x, point.y );
+            if ( isNewFixation ) {
+                fire( 'fixation', fixdet.currentFix );
+            }
+            
+            //if (fixdet.currentFix) {
+                //pt.x = fixdet.currentFix.x; 
+                //pt.y = fixdet.currentFix.y;
+            //}
+            
+            lastSample = {
+                ts: ts,
+                x: x,
+                y: y,
+                pupil: pupil,
+                ec: ec
+            };
+        };
+
+        var estimateState = function ( flags, device ) {
+            var isStopped = false;
+            if ( flags !== undefined ) {
+                isStopped = ( currentStateFlags & stateFlags.tracking ) > 0 && ( flags & stateFlags.tracking ) === 0;
+                currentStateFlags = flags;
+            }
+
+            if ( device !== undefined ) {
+                currentDevice = device;
+            }
+            
+            return {
+                isServiceRunning: !!websocket,
+                isConnected:  (currentStateFlags & stateFlags.connected) > 0,
+                isCalibrated: (currentStateFlags & stateFlags.calibrated) > 0,
+                isTracking:   (currentStateFlags & stateFlags.tracking) > 0,
+                isBusy:       (currentStateFlags & stateFlags.busy) > 0,
+                isStopped:    isStopped,
+                device:       currentDevice
+            };
+        };
+
+        var processData = function () {
+            sampleCount += 1;
+            var s = null;
+            if ( buffer.length ) {
+                var x = 0.0;
+                var y = 0.0;
+                var p = 0.0;
+                var ec = { xl: 0.0, yl: 0.0, xr: 0.0, yr: 0.0 };
+                for ( var i = 0; i < buffer.length; i += 1 ) {
+                    var sample = buffer[ i ];
+                    x += sample.x;
+                    y += sample.y;
+                    p += sample.pupil;
+                    if ( sample.ec ) {
+                        ec.xl += sample.ec.xl;
+                        ec.yl += sample.ec.yl;
+                        ec.xr += sample.ec.xr;
+                        ec.yr += sample.ec.yr;
+                    }
+                }
+                s = { 
+                    ts: Math.round( sampleCount * (1000.0 / iOptions.frequency) ),
+                    x: x / buffer.length,
+                    y: y / buffer.length,
+                    pupil: p / buffer.length,
+                    ec: {
+                        xl: ec.xl / buffer.length,
+                        yl: ec.yl / buffer.length,
+                        xr: ec.xr / buffer.length,
+                        yr: ec.yr / buffer.length
+                    }
+                };
+                buffer = [];
+            } else if ( lastSample ) {
+                s = lastSample;
+            }
+            
+            if ( s ) {
+                applyData( s.ts, s.x, s.y, s.pupil, s.ec );
+            }
+            
+            var now = Date.now();
+            var nextAt = Math.round( samplingStart + (sampleCount + 1) * (1000.0 / iOptions.frequency) );
+            var pause = Math.max( 0, nextAt - now );
+            samplingTimer = setTimeout( processData, pause );
+        };
+        
+        // Params:
+        //   location - object coordinates in pixels
+        var hold = function ( location ) {
+            if ( !iOptions.enabled ) {
+                return location;
+            }
+            
+            var gaze = fixdet ? fixdet.currentFix : null;
+            if ( !gaze || gaze.duration < iOptions.dwellTime ) {
+                return location;
+            }
+
+            var viewOffset = app.View.offset();
+            var dx = ( location.x - viewOffset.x ) - gaze.x;
+            var dy = ( location.y - viewOffset.y ) - gaze.y;
+            var dist = Math.sqrt( dx * dx + dy * dy );
+            
+            var offset = dist - iOptions.gravity.radius;
+            var gravity = Math.exp(-offset * offset / 2 / iOptions.gravity.sigma / iOptions.gravity.sigma);
+            if (gravity < 0.1) {
+                return location;
+            }
+
+            var correction = gravity * iOptions.gravity.amplitude;
+            var rel = correction / dist;
+            return {
+                x: location.x - dx * rel,
+                y: location.y - dy * rel
+            };
+        };
+
+        var addEventListener = function ( name, callback )
+        {
+            if ( typeof name !== 'string' || typeof callback !== 'function' ) {
+                return;
+            }
+
+            name = name.toLowerCase();
+            for ( var eventName in callbacks ) {
+                if ( eventName === name ) {
+                    callbacks[ eventName ].push( callback );
+                    break;
+                }
+            }
+        };
+        
+        var removeEventListener = function ( name, callback )
+        {
+            if ( typeof name !== 'string' || typeof callback !== 'function' ) {
+                return;
+            }
+
+            name = name.toLowerCase();
+            for ( var eventName in callbacks ) {
+                if ( eventName === name ) {
+                    var handlers = callbacks[ eventName ];
+                    for ( var i = 0; i < handlers.length; i++ ) {
+                        if ( handlers[ i ] === callback ) {
+                            handlers.splice( i, 1 );
+                            break;
+                        }
+                    }
+                    break;
+                }
+            }
+        };
+        
+        var fire = function ( name, param ) { 
+            var handlers = callbacks[ name ]; 
+            if ( handlers ) 
+                for ( var i = 0; i < handlers.length; i++ ) 
+                    handlers[ i ]( param ); 
+        };
+
+        return {
+            StateFlags: stateFlags,
+            state: state,
+            addEventListener: addEventListener,
+            removeEventListener: removeEventListener,
+            connect: connect,
+            stateFlags: function() { return currentStateFlags; },
+            device: function() { return device; },
+            calibrate: function() { sendToWebSocket( request.calibrate ); },
+            toggleTracking: function() { sendToWebSocket( request.toggleTracking ); },
+            location: function() { return fixdet ? fixdet.currentFix : null; },
+            hold: hold,
+
+            // debug
+            fire: fire,
+            fixdet: function () {
+                if (!fixdet)
+                    fixdet = new FixationDetector( iOptions.fixdet );
+                return fixdet;
+            }
+        };
+    })();
+
+    gazePoint.getOptions = function () {
+        return app.Utils.clone( iOptions );
+    };
+
+    gazePoint.setOptions = function ( aOptions ) {
+        app.Utils.extend( true, iOptions, aOptions );
+    };
+
+    app.GazePoint = gazePoint;
+
+})( window.MEW );

@@ -62,20 +62,21 @@
 
         MEW.Options.on( 'hide', function ( aNewOptons )  {
 //var startTime = (new Date()).getTime();
-            var world = new MEW.World();
+            var world = new MEW.World( null, function() {
 //console.log( 'World created in ', (new Date()).getTime() - startTime, ' ms' );
 
-            var view = new MEW.FieldView( world );
-            var stats = new MEW.Statistics( world, view );
-            var clock = new MEW.Clock();
+                var view = new MEW.FieldView( world );
+                var stats = new MEW.Statistics( world, view );
+                var clock = new MEW.Clock();
 
-            MEW.Message.on( 'show', clock.stop.bind( clock ) );
-            MEW.Message.on( 'hide', clock.resume.bind( clock ) );
-            
-            stats.init();
-            view.create();
-            world.start();
-            clock.start();
+                MEW.Message.on( 'show', clock.stop.bind( clock ) );
+                MEW.Message.on( 'hide', clock.resume.bind( clock ) );
+                
+                stats.init();
+                view.create();
+                world.start();
+                clock.start();
+            });
         });
     </script>
 </body>
