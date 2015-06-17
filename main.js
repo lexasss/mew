@@ -4705,7 +4705,7 @@ if (!MEW) {
 
 })( MEW );
 
-/* Module to gaze input
+/* Module for gaze input
  * Exports static GazePoint and Cage objects
  *
  * Usage: 
